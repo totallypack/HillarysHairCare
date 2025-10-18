@@ -8,7 +8,13 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddOpenApi();
 
-// allows passing datetimes without time zone data 
+// Configure JSON options to handle circular references
+builder.Services.Configure<JsonOptions>(options =>
+{
+    options.SerializerOptions.ReferenceHandler = ReferenceHandler.IgnoreCycles;
+});
+
+// allows passing datetimes without time zone data
 AppContext.SetSwitch("Npgsql.EnableLegacyTimestampBehavior", true);
 
 // allows our api endpoints to access the database through Entity Framework Core
@@ -471,6 +477,140 @@ app.MapPost("/api/services", (HillarysHairCareDbContext db, Service service) =>
     db.SaveChanges();
 
     return Results.Created($"/api/services/{service.Id}", service);
+});
+
+// PUT (Update) Endpoints
+
+// Update appointment details (date, stylist, customer)
+app.MapPut("/api/appointments/{id}", (HillarysHairCareDbContext db, int id, Appointment appointment) =>
+{
+    var existingAppointment = db.Appointments.FirstOrDefault(a => a.Id == id);
+    if (existingAppointment == null)
+    {
+        return Results.NotFound();
+    }
+
+    // Validate customer exists
+    var customer = db.Customers.Find(appointment.CustomerId);
+    if (customer == null)
+    {
+        return Results.BadRequest("Customer not found");
+    }
+
+    // Validate stylist exists and is active
+    var stylist = db.Stylists.Find(appointment.StylistId);
+    if (stylist == null)
+    {
+        return Results.BadRequest("Stylist not found");
+    }
+    if (!stylist.IsActive)
+    {
+        return Results.BadRequest("Cannot assign appointment to inactive stylist");
+    }
+
+    // Update properties
+    existingAppointment.CustomerId = appointment.CustomerId;
+    existingAppointment.StylistId = appointment.StylistId;
+    existingAppointment.AppointmentDate = appointment.AppointmentDate;
+
+    db.SaveChanges();
+
+    return Results.NoContent();
+});
+
+// Update appointment services (replace all services)
+app.MapPut("/api/appointments/{appointmentId}/services", (HillarysHairCareDbContext db, int appointmentId, List<int> serviceIds) =>
+{
+    var appointment = db.Appointments
+        .Include(a => a.AppointmentServices)
+        .FirstOrDefault(a => a.Id == appointmentId);
+
+    if (appointment == null)
+    {
+        return Results.NotFound("Appointment not found");
+    }
+
+    // Validate all services exist
+    foreach (var serviceId in serviceIds)
+    {
+        var service = db.Services.Find(serviceId);
+        if (service == null)
+        {
+            return Results.BadRequest($"Service with ID {serviceId} not found");
+        }
+    }
+
+    // Remove existing services
+    db.AppointmentServices.RemoveRange(appointment.AppointmentServices);
+
+    // Add new services
+    foreach (var serviceId in serviceIds)
+    {
+        db.AppointmentServices.Add(new AppointmentService
+        {
+            AppointmentId = appointmentId,
+            ServiceId = serviceId
+        });
+    }
+
+    db.SaveChanges();
+
+    return Results.NoContent();
+});
+
+// Update stylist
+app.MapPut("/api/stylists/{id}", (HillarysHairCareDbContext db, int id, Stylist stylist) =>
+{
+    var existingStylist = db.Stylists.FirstOrDefault(s => s.Id == id);
+    if (existingStylist == null)
+    {
+        return Results.NotFound();
+    }
+
+    existingStylist.FirstName = stylist.FirstName;
+    existingStylist.LastName = stylist.LastName;
+    // Note: IsActive is handled by deactivate/reactivate endpoints
+
+    db.SaveChanges();
+
+    return Results.NoContent();
+});
+
+// Update customer
+app.MapPut("/api/customers/{id}", (HillarysHairCareDbContext db, int id, Customer customer) =>
+{
+    var existingCustomer = db.Customers.FirstOrDefault(c => c.Id == id);
+    if (existingCustomer == null)
+    {
+        return Results.NotFound();
+    }
+
+    existingCustomer.FirstName = customer.FirstName;
+    existingCustomer.LastName = customer.LastName;
+    existingCustomer.Email = customer.Email;
+    existingCustomer.PhoneNumber = customer.PhoneNumber;
+
+    db.SaveChanges();
+
+    return Results.NoContent();
+});
+
+// Update service
+app.MapPut("/api/services/{id}", (HillarysHairCareDbContext db, int id, Service service) =>
+{
+    var existingService = db.Services.FirstOrDefault(s => s.Id == id);
+    if (existingService == null)
+    {
+        return Results.NotFound();
+    }
+
+    existingService.Name = service.Name;
+    existingService.Description = service.Description;
+    existingService.Price = service.Price;
+
+    db.SaveChanges();
+
+    return Results.NoContent();
 });
 
 app.Run();

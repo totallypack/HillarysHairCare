@@ -1,7 +1,17 @@
 {
   "permissions": {
     "allow": [
-      "Bash(cat \"C:\\Users\\total\\workspace\\csharp\\HillarysHairCare\\Models\\DTOs\\CustomerDTO.cs\")"
+      "Bash(cat \"C:\\Users\\total\\workspace\\csharp\\HillarysHairCare\\Models\\DTOs\\CustomerDTO.cs\")",
+      "Bash(dotnet run)",
+      "Bash(curl -s http://localhost:5000/api/appointments)",
+      "Bash(python -m json.tool)",
+      "Bash(curl -s http://localhost:5000/api/appointments/1)",
+      "Bash(curl -s http://localhost:5000/api/stylists)",
+      "Bash(curl -s http://localhost:5000/api/services)",
+      "Bash(curl -s -X POST http://localhost:5000/api/appointments -H \"Content-Type: application/json\" -d \"{\"\"customerId\"\":9,\"\"stylistId\"\":2,\"\"appointmentDate\"\":\"\"2025-10-25T14:00:00\"\"}\")",
+      "Bash(curl -s -X POST http://localhost:5000/api/appointments -H \"Content-Type: application/json\" -d \"{\"\"customerId\"\":9,\"\"stylistId\"\":2,\"\"appointmentDate\"\":\"\"2025-10-25T14:00:00\"\"}\" -w \"\\nHTTP Status: %{http_code}\\n\")",
+      "Bash(curl -s -X POST http://localhost:5000/api/appointments/11/services -H \"Content-Type: application/json\" -d \"[1,3]\" -w \"\\nHTTP Status: %{http_code}\\n\")",
+      "Bash(curl -s http://localhost:5000/api/appointments/11)"
     ],
     "deny": [],
     "ask": []
