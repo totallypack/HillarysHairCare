@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(cat \"C:\\Users\\total\\workspace\\csharp\\HillarysHairCare\\Models\\DTOs\\CustomerDTO.cs\")"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}
