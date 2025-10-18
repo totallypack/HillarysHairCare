@@ -265,4 +265,119 @@ app.MapGet("/api/services", (HillarysHairCareDbContext db) =>
         .ToList();
 });
 
+// DELETE/UPDATE Endpoints
+
+// Deactivate a stylist (PUT - sets IsActive to false)
+app.MapPut("/api/stylists/{id}/deactivate", (HillarysHairCareDbContext db, int id) =>
+{
+    var stylist = db.Stylists.FirstOrDefault(s => s.Id == id);
+
+    if (stylist == null)
+    {
+        return Results.NotFound();
+    }
+
+    stylist.IsActive = false;
+    db.SaveChanges();
+
+    return Results.NoContent();
+});
+
+// Reactivate a stylist (PUT - sets IsActive to true)
+app.MapPut("/api/stylists/{id}/reactivate", (HillarysHairCareDbContext db, int id) =>
+{
+    var stylist = db.Stylists.FirstOrDefault(s => s.Id == id);
+
+    if (stylist == null)
+    {
+        return Results.NotFound();
+    }
+
+    stylist.IsActive = true;
+    db.SaveChanges();
+
+    return Results.NoContent();
+});
+
+// Cancel an appointment (PUT - sets IsCanceled to true)
+app.MapPut("/api/appointments/{id}/cancel", (HillarysHairCareDbContext db, int id) =>
+{
+    var appointment = db.Appointments.FirstOrDefault(a => a.Id == id);
+
+    if (appointment == null)
+    {
+        return Results.NotFound();
+    }
+
+    appointment.IsCanceled = true;
+    db.SaveChanges();
+
+    return Results.NoContent();
+});
+
+// Delete an appointment (actually removes from database)
+app.MapDelete("/api/appointments/{id}", (HillarysHairCareDbContext db, int id) =>
+{
+    var appointment = db.Appointments
+        .Include(a => a.AppointmentServices)
+        .FirstOrDefault(a => a.Id == id);
+
+    if (appointment == null)
+    {
+        return Results.NotFound();
+    }
+
+    // Remove associated AppointmentServices first (cascade delete)
+    db.AppointmentServices.RemoveRange(appointment.AppointmentServices);
+    db.Appointments.Remove(appointment);
+    db.SaveChanges();
+
+    return Results.NoContent();
+});
+
+// Delete a customer
+app.MapDelete("/api/customers/{id}", (HillarysHairCareDbContext db, int id) =>
+{
+    var customer = db.Customers
+        .Include(c => c.Appointments)
+            .ThenInclude(a => a.AppointmentServices)
+        .FirstOrDefault(c => c.Id == id);
+
+    if (customer == null)
+    {
+        return Results.NotFound();
+    }
+
+    // Remove all appointments and their services
+    foreach (var appointment in customer.Appointments)
+    {
+        db.AppointmentServices.RemoveRange(appointment.AppointmentServices);
+    }
+    db.Appointments.RemoveRange(customer.Appointments);
+    db.Customers.Remove(customer);
+    db.SaveChanges();
+
+    return Results.NoContent();
+});
+
+// Delete a service
+app.MapDelete("/api/services/{id}", (HillarysHairCareDbContext db, int id) =>
+{
+    var service = db.Services
+        .Include(s => s.AppointmentServices)
+        .FirstOrDefault(s => s.Id == id);
+
+    if (service == null)
+    {
+        return Results.NotFound();
+    }
+
+    // Remove associated AppointmentServices first
+    db.AppointmentServices.RemoveRange(service.AppointmentServices);
+    db.Services.Remove(service);
+    db.SaveChanges();
+
+    return Results.NoContent();
+});
+
 app.Run();
