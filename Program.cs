@@ -380,4 +380,97 @@ app.MapDelete("/api/services/{id}", (HillarysHairCareDbContext db, int id) =>
     return Results.NoContent();
 });
 
+// POST (Create) Endpoints
+
+// Create a new appointment
+app.MapPost("/api/appointments", (HillarysHairCareDbContext db, Appointment appointment) =>
+{
+    // Validate that customer exists
+    var customer = db.Customers.Find(appointment.CustomerId);
+    if (customer == null)
+    {
+        return Results.BadRequest("Customer not found");
+    }
+
+    // Validate that stylist exists and is active
+    var stylist = db.Stylists.Find(appointment.StylistId);
+    if (stylist == null)
+    {
+        return Results.BadRequest("Stylist not found");
+    }
+    if (!stylist.IsActive)
+    {
+        return Results.BadRequest("Cannot book appointment with inactive stylist");
+    }
+
+    // Set default values
+    appointment.IsCanceled = false;
+
+    db.Appointments.Add(appointment);
+    db.SaveChanges();
+
+    return Results.Created($"/api/appointments/{appointment.Id}", appointment);
+});
+
+// Add services to an appointment
+app.MapPost("/api/appointments/{appointmentId}/services", (HillarysHairCareDbContext db, int appointmentId, List<int> serviceIds) =>
+{
+    var appointment = db.Appointments.Find(appointmentId);
+    if (appointment == null)
+    {
+        return Results.NotFound("Appointment not found");
+    }
+
+    // Validate all services exist
+    foreach (var serviceId in serviceIds)
+    {
+        var service = db.Services.Find(serviceId);
+        if (service == null)
+        {
+            return Results.BadRequest($"Service with ID {serviceId} not found");
+        }
+
+        // Add AppointmentService entry
+        db.AppointmentServices.Add(new AppointmentService
+        {
+            AppointmentId = appointmentId,
+            ServiceId = serviceId
+        });
+    }
+
+    db.SaveChanges();
+
+    return Results.Created($"/api/appointments/{appointmentId}", null);
+});
+
+// Create a new stylist
+app.MapPost("/api/stylists", (HillarysHairCareDbContext db, Stylist stylist) =>
+{
+    // New stylists are active by default
+    stylist.IsActive = true;
+
+    db.Stylists.Add(stylist);
+    db.SaveChanges();
+
+    return Results.Created($"/api/stylists/{stylist.Id}", stylist);
+});
+
+// Create a new customer
+app.MapPost("/api/customers", (HillarysHairCareDbContext db, Customer customer) =>
+{
+    db.Customers.Add(customer);
+    db.SaveChanges();
+
+    return Results.Created($"/api/customers/{customer.Id}", customer);
+});
+
+// Create a new service
+app.MapPost("/api/services", (HillarysHairCareDbContext db, Service service) =>
+{
+    db.Services.Add(service);
+    db.SaveChanges();
+
+    return Results.Created($"/api/services/{service.Id}", service);
+});
+
 app.Run();
